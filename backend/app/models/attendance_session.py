@@ -12,6 +12,11 @@ class AttendanceSession(db.Model):
         nullable=False
     )
     
+    created_by = db.Column(
+    db.Integer,
+    db.ForeignKey("users.id"),
+    nullable=False
+    )
 
     starts_at = db.Column(db.DateTime, nullable=False)
     ends_at = db.Column(db.DateTime, nullable=False)

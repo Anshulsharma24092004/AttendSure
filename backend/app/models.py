@@ -147,7 +147,7 @@ class AttendanceRecord(db.Model):
     submitted_longitude = db.Column(db.Numeric(9,6), nullable=True)
     distance_from_center = db.Column(db.Numeric(10,2), nullable=True)
     code_matched = db.Column(db.Boolean, nullable=True)
-    device_signature_hash = db.Column(db.String(255), nullable=True)
+    device_signature = db.Column(db.String(255), nullable=True)
     ip_subnet = db.Column(db.String(50), nullable=True)
 
     # Constraints
