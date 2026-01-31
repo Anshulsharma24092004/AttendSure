@@ -123,30 +123,37 @@ Tables:
 git clone https://github.com/Anshulsharma24092004/AttendSure.git
 cd AttendSure
 ```
+---
 
 ## Backend Setup (Flask)
 
 ### 1) Create & activate virtual environment
 From project root:
 
-```bash
+```
 cd backend
 python -m venv venv
-
+```
 
 # Windows (PowerShell):
 
+```
 venv\Scripts\Activate.ps1
+```
 
+# Windows (CMD):
 
-Windows (CMD):
-
+```
 venv\Scripts\activate
+```
 
-2) Install backend dependencies
+### 2) Install backend dependencies
+
+```
 pip install -r requirements.txt
+```
 
-3) Create .env in backend/
+### 3) Create .env in backend/
 
 Example:
 
@@ -154,15 +161,82 @@ DATABASE_URL=mysql+pymysql://USER:PASSWORD@localhost:3306/attendsure
 SECRET_KEY=your_secret_key_here
 
 
-If your MySQL password contains special characters, URL-encode it.
+### 4) Run migrations
 
-4) Run migrations
+```
 flask db upgrade
+```
 
-5) Run backend server
+### 5) Run backend server
+
+```
 flask run
+```
 
 
-Backend runs on:
+# Backend runs on:
 
 http://127.0.0.1:5000
+
+## Frontend Setup (React)
+
+### 1) Install frontend dependencies
+
+From project root:
+
+```
+cd frontend
+npm install
+```
+
+2) Start frontend
+
+```
+npm start
+````
+
+# Frontend runs on:
+
+http://localhost:3000
+
+# Proxy / cookies
+
+Frontend uses CRA proxy to talk to backend (so requests can be:
+fetch("/auth/login"))
+
+# Cookies are enabled using:
+
+```
+credentials: "include"
+```
+
+## Demo Flow (Recommended)
+### Teacher
+
+- `Sign up teacher → /signup (role: teacher)`
+
+- `Login → /login`
+
+- `Create class (name + lat + long + radius)`
+
+- `Start attendance (code + start/end)`
+
+- `View records (initially 0)`
+
+- `End attendance`
+
+### Student
+
+- `Sign up student → /signup (role: student)`
+
+- `Login → /login`
+
+- `Enroll into class (enter class_id)`
+
+- `Select class → check active session`
+
+- `Enter code → capture GPS → submit attendance`
+
+### Verify
+
+- `Back in teacher dashboard → View records → shows student submission.`
