@@ -176,8 +176,8 @@ def start_attendance():
     attendance_session = AttendanceSession(
         class_id=class_id,
         created_by=user_id,
-        starts_at=starts_at,
-        ends_at=ends_at,
+        starts_at=starts_at_dt,
+        ends_at=ends_at_dt,
         attendance_code=attendance_code,
         #latitude=latitude,
         #longitude=longitude,
@@ -196,3 +196,116 @@ def start_attendance():
 def parse_iso(dt_str):
     # handles "2026-01-31T00:00:00"
     return datetime.fromisoformat(dt_str)
+
+
+@attendance_bp.route("/active", methods=["GET"])
+def get_active_session():
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    user_id = session["user_id"]
+    role = session.get("role")
+
+    class_id = request.args.get("class_id", type=int)
+    if not class_id:
+        return jsonify({"error": "class_id is required"}), 400
+
+    # If student: must be enrolled
+    if role == "student":
+        enrollment = Enrollment.query.filter_by(student_id=user_id, class_id=class_id).first()
+        if not enrollment:
+            return jsonify({"error": "Student not enrolled in this class"}), 403
+
+    # If teacher: must own the class
+    if role == "teacher":
+        class_obj = Class.query.get(class_id)
+        if not class_obj:
+            return jsonify({"error": "Class not found"}), 404
+        if class_obj.teacher_id != user_id:
+            return jsonify({"error": "Not allowed"}), 403
+
+    # Find active session
+    now = datetime.now()
+    active = AttendanceSession.query.filter_by(class_id=class_id, is_active=True).order_by(AttendanceSession.created_at.desc()).first()
+
+    if not active:
+        return jsonify({"active": None}), 200
+
+    # Optional strict window filtering (uncomment if you want)
+    # if now < active.starts_at or now > active.ends_at:
+    #     return jsonify({"active": None}), 200
+
+    return jsonify({
+        "active": {
+            "attendance_session_id": active.id,
+            "class_id": active.class_id,
+            "starts_at": active.starts_at.isoformat() if active.starts_at else None,
+            "ends_at": active.ends_at.isoformat() if active.ends_at else None,
+            "is_active": bool(active.is_active)
+        }
+    }), 200
+
+
+@attendance_bp.route("/end", methods=["POST"])
+def end_attendance():
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    if session.get("role") != "teacher":
+        return jsonify({"error": "Only teachers can end attendance"}), 403
+
+    user_id = session["user_id"]
+    data = request.get_json() or {}
+
+    attendance_session_id = data.get("attendance_session_id")
+    if not attendance_session_id:
+        return jsonify({"error": "attendance_session_id is required"}), 400
+
+    s = AttendanceSession.query.get(attendance_session_id)
+    if not s:
+        return jsonify({"error": "Attendance session not found"}), 404
+
+    # only creator teacher can end it
+    if s.created_by != user_id:
+        return jsonify({"error": "Not allowed"}), 403
+
+    s.is_active = False
+    db.session.commit()
+
+    return jsonify({"message": "Attendance session ended"}), 200
+
+
+@attendance_bp.route("/session/<int:attendance_session_id>/records", methods=["GET"])
+def get_attendance_records(attendance_session_id):
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    if session.get("role") != "teacher":
+        return jsonify({"error": "Only teachers can view attendance records"}), 403
+
+    user_id = session["user_id"]
+
+    s = AttendanceSession.query.get(attendance_session_id)
+    if not s:
+        return jsonify({"error": "Attendance session not found"}), 404
+
+    if s.created_by != user_id:
+        return jsonify({"error": "Not allowed"}), 403
+
+    records = AttendanceRecord.query.filter_by(session_id=attendance_session_id).order_by(AttendanceRecord.marked_at.asc()).all()
+
+    return jsonify({
+        "attendance_session_id": attendance_session_id,
+        "count": len(records),
+        "records": [
+            {
+                "id": r.id,
+                "student_id": r.student_id,
+                "status": r.status,
+                "device_signature": r.device_signature,
+                "ip_prefix": r.ip_prefix,
+                "marked_at": r.marked_at.isoformat() if r.marked_at else None
+            }
+            for r in records
+        ]
+    }), 200

@@ -5,12 +5,22 @@ from app.models import *
 from .auth import auth_bp
 from .attendance import attendance_bp
 from .classes import classes_bp
+from flask_cors import CORS
 import os
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object("app.config.Config")
+    app.config.from_object(Config)
     app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
+
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = False  # because I'm using http (not https)
+
+    CORS(
+    app,
+    origins=["http://localhost:3000"],
+    supports_credentials=True
+)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -20,6 +30,9 @@ def create_app():
     app.register_blueprint(attendance_bp, url_prefix='/attendance')
 
     app.register_blueprint(classes_bp, url_prefix="/classes")
+
+    
+
 
 
     return app

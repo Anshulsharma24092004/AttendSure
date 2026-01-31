@@ -82,3 +82,58 @@ def enroll_in_class(class_id):
     db.session.commit()
 
     return jsonify({"message": "Enrolled successfully", "class_id": class_id}), 201
+
+
+@classes_bp.route("", methods=["GET"])
+def list_classes():
+    user_id = session.get("user_id")
+    role = session.get("role")
+
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+
+    # Teacher: classes they created
+    if role == "teacher":
+        classes = Class.query.filter_by(teacher_id=user_id).all()
+
+        return jsonify({
+            "classes": [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "teacher_id": c.teacher_id,
+                    "latitude": float(c.latitude),
+                    "longitude": float(c.longitude),
+                    "radius_meters": float(c.radius_meters),
+                    "is_active": bool(c.is_active)
+                }
+                for c in classes
+            ]
+        }), 200
+
+    # Student: classes they enrolled in
+    elif role == "student":
+        enrollments = Enrollment.query.filter_by(student_id=user_id).all()
+        class_ids = [e.class_id for e in enrollments]
+
+        if not class_ids:
+            return jsonify({"classes": []}), 200
+
+        classes = Class.query.filter(Class.id.in_(class_ids)).all()
+
+        return jsonify({
+            "classes": [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "teacher_id": c.teacher_id,
+                    "latitude": float(c.latitude),
+                    "longitude": float(c.longitude),
+                    "radius_meters": float(c.radius_meters),
+                    "is_active": bool(c.is_active)
+                }
+                for c in classes
+            ]
+        }), 200
+
+    return jsonify({"error": "Invalid role"}), 400
